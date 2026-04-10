@@ -15,5 +15,9 @@ def health():
 def data():
     return 'This is a test API!'
 
+@app.route('/about')
+def about():
+    return 'This is about page!'
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
