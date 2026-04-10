@@ -1,0 +1,39 @@
+name: Build and Deploy
+
+# 1. Triggers: When should this workflow run?
+on:
+  push:
+    branches:
+      - main # Runs automatically when code is pushed to the main branch
+
+# 2. Jobs: The actual work to be done
+jobs:
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest # This means it runs on GitHub's temporary Ubuntu server
+
+    steps:
+      # Step A: Download the code from your repository to GitHub's server
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step B-1: Authenticate with Amazon Web Services
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step B-2: Log in to AWS ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Step C: Build and Push (ECR Version)
+      - name: Build and Push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/my_flask_app:latest
