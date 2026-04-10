@@ -57,8 +57,17 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
           script: |
-            # 1. Install AWS CLI just in case it's not on the server
-            sudo apt-get update && sudo apt-get install -y awscli docker.io
+            # 1. Install AWS CLI and Docker robustly
+            if ! command -v aws &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y unzip curl
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip -qo awscliv2.zip
+              sudo ./aws/install --update
+            fi
+            if ! command -v docker &> /dev/null; then
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+            fi
             
             # 2. Configure AWS credentials purely for this session
             aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
