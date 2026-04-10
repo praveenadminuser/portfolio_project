@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main # Runs automatically when code is pushed to the main branch
+  workflow_dispatch: # Allows you to manually trigger the workflow from the Actions tab
 
 # 2. Jobs: The actual work to be done
 jobs:
