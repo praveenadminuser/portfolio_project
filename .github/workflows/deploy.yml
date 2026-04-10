@@ -38,3 +38,42 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/portfolio_ecr_registry:latest
+
+  deploy:
+    name: Deploy to EC2
+    needs: build # Wait for the build job to finish!
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: SSH into EC2 and Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-north-1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
+          script: |
+            # 1. Install AWS CLI just in case it's not on the server
+            sudo apt-get update && sudo apt-get install -y awscli docker.io
+            
+            # 2. Configure AWS credentials purely for this session
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+            aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+            aws configure set default.region $AWS_REGION
+            
+            # 3. Log into AWS ECR
+            aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin 952647926399.dkr.ecr.eu-north-1.amazonaws.com
+            
+            # 4. Download latest image from AWS ECR
+            sudo docker pull 952647926399.dkr.ecr.eu-north-1.amazonaws.com/portfolio_ecr_registry:latest
+            
+            # 5. Stop the old running server (ignore error if it doesn't exist yet)
+            sudo docker stop live_portfolio_app || true
+            sudo docker rm live_portfolio_app || true
+            
+            # 6. Run the new image! Mapping internet port 80 to your Flask port 5000
+            sudo docker run -d -p 80:5000 --name live_portfolio_app 952647926399.dkr.ecr.eu-north-1.amazonaws.com/portfolio_ecr_registry:latest
